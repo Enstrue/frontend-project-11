@@ -1,34 +1,28 @@
-// Generated using webpack-cli https://github.com/webpack/webpack-cli
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
 const isProduction = process.env.NODE_ENV === 'production';
 
 const config = {
-  entry: './src/index.js',
+  entry: './src/index.js',  // Указываем JS как точку входа
   output: {
     path: path.resolve(__dirname, 'dist'),
-    // clean: true,
+    filename: '[name].[contenthash].js',  // Добавляем хэш для устранения кэширования
+    clean: true,  // Очищает директорию dist перед новой сборкой
   },
   devServer: {
     open: true,
     host: 'localhost',
+    hot: true,  // Включаем HMR для автоматического обновления страницы
+    watchFiles: ['src/**/*'],  // Следим за изменениями в каталоге src
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: 'index.html',
+      template: './index.html',  // Указываем путь к HTML-шаблону в корне проекта
     }),
   ],
   module: {
     rules: [
-      // {
-      //   test: /\.(js|jsx)$/i,
-      //   loader: 'babel-loader',
-      // },
-      // {
-      //   test: /\.(eot|svg|ttf|woff|woff2|png|jpg|gif)$/i,
-      //   type: 'asset',
-      // },
       {
         test: /\.js$/,
         exclude: /node_modules/,
@@ -39,7 +33,10 @@ const config = {
           },
         },
       },
-      { test: /\.css$/, use: ['style-loader', 'css-loader', 'postcss-loader'] },
+      {
+        test: /\.css$/,
+        use: ['style-loader', 'css-loader', 'postcss-loader'],
+      },
       {
         test: /\.scss$/,
         use: ['style-loader', 'css-loader', 'sass-loader', 'postcss-loader'],
@@ -53,6 +50,10 @@ const config = {
         use: 'file-loader',
       },
     ],
+  },
+  watchOptions: {
+    aggregateTimeout: 300,  // Задержка перед пересборкой после изменений
+    poll: 1000,             // Проверка изменений файлов каждые 1000 мс (поллинг)
   },
 };
 

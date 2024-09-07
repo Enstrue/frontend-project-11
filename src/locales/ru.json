@@ -1,0 +1,12 @@
+{
+  "translation": {
+    "title": "RSS агрегатор",
+    "description": "Начните читать RSS сегодня! Это легко, это красиво.",
+    "addButton": "Добавить",
+    "feedback": {
+      "success": "RSS успешно добавлен",
+      "invalidUrl": "Некорректный URL",
+      "alreadyExists": "Этот RSS-поток уже добавлен"
+    }
+  }
+}

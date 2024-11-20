@@ -7,7 +7,7 @@ const initI18n = () => {
   return i18nInstance
     .init({
       resources: {
-        ru: { translation: ru },
+        ru: ru,
       },
       lng: 'ru', // Устанавливаем язык по умолчанию
       fallbackLng: 'ru', // Устанавливаем язык по умолчанию, если выбранный не доступен

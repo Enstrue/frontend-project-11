@@ -1,10 +1,11 @@
 import * as yup from 'yup';
+import fetchRSS from './fetchRSS.js';
+import parseRSS from './parseRSS.js';
 import initI18n from './i18n.js';
 import { initView } from './view.js';
 
 const app = () => {
   initI18n().then((i18nInstance) => {
-    // Устанавливаем локализацию для yup после полной инициализации i18n
     yup.setLocale({
       string: {
         url: i18nInstance.t('feedback.invalidUrl'),
@@ -15,9 +16,9 @@ const app = () => {
       },
     });
 
-    // Начальное состояние
     const state = {
       feeds: [],
+      posts: [],
       form: {
         url: '',
         valid: true,
@@ -25,25 +26,12 @@ const app = () => {
       },
     };
 
-    // Схема валидации URL
     const schema = yup.object().shape({
-      url: yup.string()
-        .url()  // Сообщение об ошибке будет локализовано через yup.setLocale
-        .required()  // Сообщение об ошибке будет локализовано через yup.setLocale
-        .notOneOf(state.feeds), // Проверка на уникальность; сообщение об ошибке локализуется через yup.setLocale
+      url: yup.string().url().required().notOneOf(state.feeds.map((feed) => feed.url)),
     });
 
-    // Функция валидации
-    const validate = (url) => {
-      return schema.validate({ url }, { context: { feeds: state.feeds } })
-        .then(() => ({ isValid: true, error: null }))
-        .catch((err) => ({ isValid: false, error: err.errors[0] }));
-    };
-
-    // Инициализация интерфейса (view)
     const watchedState = initView(state, i18nInstance);
 
-    // Обработка отправки формы
     const form = document.querySelector('.rss-form');
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -53,16 +41,26 @@ const app = () => {
 
       watchedState.form.url = url;
 
-      validate(url)
-        .then(({ isValid, error }) => {
-          if (isValid) {
-            watchedState.feeds.push(url); // Добавляем URL в список
-            watchedState.form.url = '';
-            form.reset(); // Сбрасываем форму
-            form.querySelector('input').focus(); // Устанавливаем фокус
-          }
-          watchedState.form.valid = isValid;
-          watchedState.form.error = error; // Устанавливаем ошибку
+      schema.validate({ url })
+        .then(() => fetchRSS(url))
+        .then((rssData) => parseRSS(rssData))
+        .then(({ feed, posts }) => {
+          const feedId = _.uniqueId();
+
+          watchedState.feeds.push({ ...feed, id: feedId, url });
+
+          const newPosts = posts.map((post) => ({ ...post, id: _.uniqueId(), feedId }));
+          watchedState.posts.push(...newPosts);
+
+          watchedState.form.valid = true;
+          watchedState.form.error = null;
+
+          form.reset();
+          form.querySelector('input').focus();
+        })
+        .catch((error) => {
+          watchedState.form.valid = false;
+          watchedState.form.error = error.message;
         });
     });
   });

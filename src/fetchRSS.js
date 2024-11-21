@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const fetchRSS = (url) => {
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&disableCache=true`;
+  const proxyUrl = `https://allorigins.hexlet.app/get?disableCache=true&url=${url}`;
 
   return axios.get(proxyUrl)
     .then((response) => response.data.contents)

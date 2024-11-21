@@ -1,4 +1,5 @@
 import * as yup from 'yup';
+import _ from 'lodash';
 import fetchRSS from './fetchRSS.js';
 import parseRSS from './parseRSS.js';
 import initI18n from './i18n.js';
@@ -24,6 +25,10 @@ const app = () => {
         valid: true,
         error: null,
       },
+      uiState: {
+        visitedPosts: new Set(),  // Инициализируем пустое множество для посещённых постов
+        modal: null,
+      }
     };
 
     const schema = yup.object().shape({
@@ -60,7 +65,7 @@ const app = () => {
         })
         .catch((error) => {
           watchedState.form.valid = false;
-          watchedState.form.error = error.message;
+          watchedState.form.error = i18nInstance.t(`feedback.${error}`);
         });
     });
   });

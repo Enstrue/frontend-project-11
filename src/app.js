@@ -26,10 +26,10 @@ const app = () => {
         error: null,
       },
       uiState: {
-        visitedPosts: new Set(),  // Множество для отслеживания посещённых постов
+        visitedPosts: new Set(),
         modal: null,
       },
-      lastChecked: {}  // Храним информацию о последней проверке каждого потока
+      lastChecked: {},
     };
 
     const schema = yup.object().shape({
@@ -54,7 +54,10 @@ const app = () => {
           const feedId = _.uniqueId();
           watchedState.feeds.push({ ...feed, id: feedId, url });
 
-          // Добавляем новые посты
+          if (!state.lastChecked[url]) {
+            state.lastChecked[url] = new Date();
+          }
+
           const newPosts = posts.map((post) => ({ ...post, id: _.uniqueId(), feedId }));
           watchedState.posts.push(...newPosts);
 
@@ -70,38 +73,45 @@ const app = () => {
         });
     });
 
-    // Функция для проверки обновлений RSS
     const checkForUpdates = (url) => {
+      console.log(`Starting update check for ${url}...`);
+
+      const lastChecked = state.lastChecked[url] || new Date(0);
+      console.log(`Last checked for ${url}: ${lastChecked}`);
+
       fetchRSS(url)
         .then((rssData) => parseRSS(rssData))
         .then(({ posts }) => {
-          const lastChecked = state.lastChecked[url] || new Date(0);  // Если нет времени последней проверки, то начинаем с самой старой даты
-          const newPosts = posts.filter(post => new Date(post.pubDate) > lastChecked);
+          console.log(`Fetched ${posts.length} posts for ${url}`);
+
+          const newPosts = posts.filter(post => {
+            const postDate = new Date(post.pubDate);
+            return postDate > lastChecked;
+          });
 
           if (newPosts.length > 0) {
-            // Добавляем новые посты в список
             newPosts.forEach(post => {
               watchedState.posts.push({ ...post, id: _.uniqueId() });
             });
-
-            // Обновляем информацию о последней проверке
             state.lastChecked[url] = new Date();
           }
+
+          setTimeout(() => checkForUpdates(url), 5000);
         })
-        .catch((error) => console.error(`Error checking updates for ${url}:`, error));
+        .catch((error) => {
+          console.error(`Error checking updates for ${url}:`, error);
+          setTimeout(() => checkForUpdates(url), 5000);
+        });
     };
 
-    // Периодическая проверка всех добавленных RSS
     const startUpdateChecking = () => {
-      state.feeds.forEach((feed) => {
+      console.log("Starting periodic update check...");
+
+      watchedState.feeds.forEach(feed => {
         checkForUpdates(feed.url);
       });
-
-      // Проверяем снова через 5 секунд
-      setTimeout(startUpdateChecking, 5000);
     };
 
-    // Запускаем периодическую проверку обновлений
     startUpdateChecking();
   });
 };

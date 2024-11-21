@@ -26,9 +26,10 @@ const app = () => {
         error: null,
       },
       uiState: {
-        visitedPosts: new Set(),  // Инициализируем пустое множество для посещённых постов
+        visitedPosts: new Set(),  // Множество для отслеживания посещённых постов
         modal: null,
-      }
+      },
+      lastChecked: {}  // Храним информацию о последней проверке каждого потока
     };
 
     const schema = yup.object().shape({
@@ -51,9 +52,9 @@ const app = () => {
         .then((rssData) => parseRSS(rssData))
         .then(({ feed, posts }) => {
           const feedId = _.uniqueId();
-
           watchedState.feeds.push({ ...feed, id: feedId, url });
 
+          // Добавляем новые посты
           const newPosts = posts.map((post) => ({ ...post, id: _.uniqueId(), feedId }));
           watchedState.posts.push(...newPosts);
 
@@ -68,6 +69,40 @@ const app = () => {
           watchedState.form.error = i18nInstance.t(`feedback.${error}`);
         });
     });
+
+    // Функция для проверки обновлений RSS
+    const checkForUpdates = (url) => {
+      fetchRSS(url)
+        .then((rssData) => parseRSS(rssData))
+        .then(({ posts }) => {
+          const lastChecked = state.lastChecked[url] || new Date(0);  // Если нет времени последней проверки, то начинаем с самой старой даты
+          const newPosts = posts.filter(post => new Date(post.pubDate) > lastChecked);
+
+          if (newPosts.length > 0) {
+            // Добавляем новые посты в список
+            newPosts.forEach(post => {
+              watchedState.posts.push({ ...post, id: _.uniqueId() });
+            });
+
+            // Обновляем информацию о последней проверке
+            state.lastChecked[url] = new Date();
+          }
+        })
+        .catch((error) => console.error(`Error checking updates for ${url}:`, error));
+    };
+
+    // Периодическая проверка всех добавленных RSS
+    const startUpdateChecking = () => {
+      state.feeds.forEach((feed) => {
+        checkForUpdates(feed.url);
+      });
+
+      // Проверяем снова через 5 секунд
+      setTimeout(startUpdateChecking, 5000);
+    };
+
+    // Запускаем периодическую проверку обновлений
+    startUpdateChecking();
   });
 };
 

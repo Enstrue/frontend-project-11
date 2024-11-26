@@ -26,8 +26,8 @@ const app = () => {
         error: null,
       },
       uiState: {
-        visitedPosts: new Set(),
-        modal: null,
+        visitedPosts: [],
+        modal: {},
       },
       lastChecked: {},
     };

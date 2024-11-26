@@ -66,10 +66,13 @@ const renderPosts = (posts, state) => {
     postLink.textContent = post.title;
     postLink.target = '_blank';
     postLink.rel = 'noopener noreferrer';
-    postLink.classList.add(state.uiState.visitedPosts.has(post.id) ? 'fw-normal' : 'fw-bold');
+    postLink.classList.toggle('fw-bold', !state.uiState.visitedPosts.includes(post.id));
+    postLink.classList.toggle('fw-normal', state.uiState.visitedPosts.includes(post.id));
 
     postLink.addEventListener('click', () => {
-      state.uiState.visitedPosts.add(post.id);
+      if (!state.uiState.visitedPosts.includes(post.id)) {
+        state.uiState.visitedPosts = [...state.uiState.visitedPosts, post.id];
+      }
     });
 
     const postButton = document.createElement('button');
@@ -79,11 +82,16 @@ const renderPosts = (posts, state) => {
     postButton.dataset.id = post.id;
 
     postButton.addEventListener('click', () => {
+      if (!state.uiState.visitedPosts.includes(post.id)) {
+        state.uiState.visitedPosts = [...state.uiState.visitedPosts, post.id];
+      }
+
       state.uiState.modal = {
         title: post.title,
         description: post.description,
         link: post.link,
       };
+      renderModal(state.uiState.modal);
     });
 
     postItem.append(postLink, postButton);
@@ -93,37 +101,42 @@ const renderPosts = (posts, state) => {
   postsContainer.appendChild(postList);
 };
 
+
+
 const renderModal = (modal) => {
   const modalElement = document.querySelector('#modal');
   const modalTitle = modalElement.querySelector('.modal-title');
   const modalBody = modalElement.querySelector('.modal-body');
   const modalFullArticle = modalElement.querySelector('.full-article');
 
+  // Устанавливаем содержимое модального окна
   modalTitle.textContent = modal.title;
   modalBody.textContent = modal.description;
   modalFullArticle.href = modal.link;
 
-  const bootstrapModal = new bootstrap.Modal(modalElement);
-  bootstrapModal.show();
+  // Открываем модальное окно
+  const bootstrapModal = new bootstrap.Modal(modalElement); // Создаём инстанс модального окна
+  bootstrapModal.show(); // Показываем окно
 };
 
+
 export const initView = (state, i18nInstance) => {
-  const watchedState = onChange(state, (path) => {
+  const watchedState = onChange(state, (path, value) => {
     if (path.startsWith('form')) {
       renderFormState(state, i18nInstance);
     }
-
     if (path === 'feeds') {
       renderFeeds(state.feeds);
     }
-
     if (path === 'posts') {
       renderPosts(state.posts, state);
     }
-
     if (path === 'uiState.modal') {
       renderModal(state.uiState.modal);
     }
+    if (path === 'uiState.visitedPosts') {
+      renderPosts(state.posts, state);
+    }    
   });
 
   return watchedState;

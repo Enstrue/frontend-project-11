@@ -70,8 +70,15 @@ const renderPosts = (posts, state) => {
     postLink.classList.toggle('fw-normal', state.uiState.visitedPosts.includes(post.id));
 
     postLink.addEventListener('click', () => {
+      state.uiState.modal = {
+        title: post.title,
+        description: post.description,
+        link: post.link,
+      };
+
       if (!state.uiState.visitedPosts.includes(post.id)) {
         state.uiState.visitedPosts = [...state.uiState.visitedPosts, post.id];
+        renderPosts(state.posts, state);
       }
     });
 
@@ -82,17 +89,22 @@ const renderPosts = (posts, state) => {
     postButton.dataset.id = post.id;
 
     postButton.addEventListener('click', () => {
-      if (!state.uiState.visitedPosts.includes(post.id)) {
-        state.uiState.visitedPosts = [...state.uiState.visitedPosts, post.id];
-      }
-
-      state.uiState.modal = {
+      // Создаём новый объект для uiState.modal
+      state.uiState.modal = { 
         title: post.title,
         description: post.description,
         link: post.link,
       };
+    
+      // Обновляем visitedPosts
+      if (!state.uiState.visitedPosts.includes(post.id)) {
+        state.uiState.visitedPosts = [...state.uiState.visitedPosts, post.id];
+        renderPosts(state.posts, state);
+      }
       renderModal(state.uiState.modal);
+      console.log('Updated uiState.modal:', state.uiState.modal);
     });
+    
 
     postItem.append(postLink, postButton);
     postList.appendChild(postItem);
@@ -101,27 +113,30 @@ const renderPosts = (posts, state) => {
   postsContainer.appendChild(postList);
 };
 
-
-
 const renderModal = (modal) => {
+  console.log('Rendering modal with data:', modal);
   const modalElement = document.querySelector('#modal');
   const modalTitle = modalElement.querySelector('.modal-title');
   const modalBody = modalElement.querySelector('.modal-body');
   const modalFullArticle = modalElement.querySelector('.full-article');
 
-  // Устанавливаем содержимое модального окна
   modalTitle.textContent = modal.title;
   modalBody.textContent = modal.description;
   modalFullArticle.href = modal.link;
 
-  // Открываем модальное окно
-  const bootstrapModal = new bootstrap.Modal(modalElement); // Создаём инстанс модального окна
-  bootstrapModal.show(); // Показываем окно
+  const bootstrapModal = new bootstrap.Modal(modalElement);
+  bootstrapModal.show();
 };
 
 
 export const initView = (state, i18nInstance) => {
   const watchedState = onChange(state, (path, value) => {
+    console.log(`Path changed: ${path}`, value);
+  
+    if (path === 'uiState.modal') {
+      console.log('Modal state changed, rendering modal...');
+      renderModal(value);
+    }
     if (path.startsWith('form')) {
       renderFormState(state, i18nInstance);
     }
@@ -131,12 +146,9 @@ export const initView = (state, i18nInstance) => {
     if (path === 'posts') {
       renderPosts(state.posts, state);
     }
-    if (path === 'uiState.modal') {
-      renderModal(state.uiState.modal);
-    }
     if (path === 'uiState.visitedPosts') {
       renderPosts(state.posts, state);
-    }    
+    }
   });
 
   return watchedState;

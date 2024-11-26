@@ -27,7 +27,21 @@ const app = () => {
       },
       uiState: {
         visitedPosts: [],
-        modal: {},
+        modal: {
+          title: null,
+          description: null,
+          link: null,
+        },
+        showModal(post) {
+          this.modal = {
+            title: post.title,
+            description: post.description,
+            link: post.link,
+          };
+          if (!this.visitedPosts.includes(post.id)) {
+            this.visitedPosts = [...this.visitedPosts, post.id];
+          }
+        },
       },
       lastChecked: {},
     };
@@ -74,34 +88,27 @@ const app = () => {
     });
 
     const checkForUpdates = (url) => {
-      console.log(`Starting update check for ${url}...`);
-
       const lastChecked = state.lastChecked[url] || new Date(0);
-      console.log(`Last checked for ${url}: ${lastChecked}`);
 
       fetchRSS(url)
         .then((rssData) => parseRSS(rssData))
         .then(({ posts }) => {
-          console.log(`Fetched ${posts.length} posts for ${url}`);
-
           const newPosts = posts.filter(post => {
             const postDate = new Date(post.pubDate);
             return postDate > lastChecked;
           });
 
           if (newPosts.length > 0) {
-            newPosts.forEach(post => {
-              watchedState.posts.push({ ...post, id: _.uniqueId() });
-            });
+            const feedId = state.feeds.find(feed => feed.url === url).id;
+            const enrichedPosts = newPosts.map(post => ({ ...post, id: _.uniqueId(), feedId }));
+
+            state.posts = [...state.posts, ...enrichedPosts];
             state.lastChecked[url] = new Date();
           }
 
           setTimeout(() => checkForUpdates(url), 5000);
         })
-        .catch((error) => {
-          console.error(`Error checking updates for ${url}:`, error);
-          setTimeout(() => checkForUpdates(url), 5000);
-        });
+        .catch(() => setTimeout(() => checkForUpdates(url), 5000));
     };
 
     const startUpdateChecking = () => {

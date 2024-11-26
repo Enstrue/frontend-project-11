@@ -32,16 +32,6 @@ const app = () => {
           description: null,
           link: null,
         },
-        showModal(post) {
-          this.modal = {
-            title: post.title,
-            description: post.description,
-            link: post.link,
-          };
-          if (!this.visitedPosts.includes(post.id)) {
-            this.visitedPosts = [...this.visitedPosts, post.id];
-          }
-        },
       },
       lastChecked: {},
     };

@@ -1,26 +1,40 @@
-import onChange from 'on-change';
+import onChange from "on-change";
 
 const renderFormState = (state, i18nInstance) => {
   const input = document.querySelector('#url-input');
   const feedback = document.querySelector('.feedback');
 
+  feedback.textContent = '';
+  feedback.classList.remove('text-success', 'text-danger');
+
   if (state.form.valid) {
     input.classList.remove('is-invalid');
-    feedback.textContent = '';
   } else {
     input.classList.add('is-invalid');
+  }
 
-    const errorMessage = i18nInstance.exists(state.form.error)
+  if (state.form.error) {
+    feedback.classList.add('text-danger');
+    feedback.textContent = i18nInstance.exists(state.form.error)
       ? i18nInstance.t(state.form.error)
       : state.form.error;
-
-    feedback.textContent = errorMessage;
+    console.log('Error message:', feedback.textContent); // Лог для проверки ошибки
   }
+
+  if (state.form.successMessage) {
+    feedback.classList.add('text-success');
+    feedback.textContent = state.form.successMessage;
+    console.log('Success message:', feedback.textContent); // Лог для проверки успеха
+  }
+  console.log('Form state:', state.form); // Лог состояния формы
 };
+
 
 const renderFeeds = (feeds) => {
   const feedsContainer = document.querySelector('.feeds');
-  feedsContainer.innerHTML = ''; // Очищаем перед добавлением
+  feedsContainer.innerHTML = '';
+
+  if (feeds.length === 0) return;
 
   const feedsTitle = document.createElement('h2');
   feedsTitle.textContent = 'Фиды';
@@ -46,9 +60,11 @@ const renderFeeds = (feeds) => {
   feedsContainer.appendChild(feedList);
 };
 
-const renderPosts = (posts, state) => {
+export const renderPosts = (posts, state) => {
   const postsContainer = document.querySelector('.posts');
-  postsContainer.innerHTML = ''; // Очищаем перед добавлением
+  postsContainer.innerHTML = '';
+
+  if (posts.length === 0) return;
 
   const postsTitle = document.createElement('h2');
   postsTitle.textContent = 'Посты';
@@ -68,43 +84,13 @@ const renderPosts = (posts, state) => {
     postLink.rel = 'noopener noreferrer';
     postLink.classList.toggle('fw-bold', !state.uiState.visitedPosts.includes(post.id));
     postLink.classList.toggle('fw-normal', state.uiState.visitedPosts.includes(post.id));
-
-    postLink.addEventListener('click', () => {
-      state.uiState.modal = {
-        title: post.title,
-        description: post.description,
-        link: post.link,
-      };
-
-      if (!state.uiState.visitedPosts.includes(post.id)) {
-        state.uiState.visitedPosts = [...state.uiState.visitedPosts, post.id];
-        renderPosts(state.posts, state);
-      }
-    });
+    postLink.dataset.id = post.id;
 
     const postButton = document.createElement('button');
     postButton.textContent = 'Просмотр';
     postButton.type = 'button';
     postButton.classList.add('btn', 'btn-outline-primary', 'btn-sm');
     postButton.dataset.id = post.id;
-
-    postButton.addEventListener('click', () => {
-      // Создаём новый объект для uiState.modal
-      state.uiState.modal = { 
-        title: post.title,
-        description: post.description,
-        link: post.link,
-      };
-    
-      // Обновляем visitedPosts
-      if (!state.uiState.visitedPosts.includes(post.id)) {
-        state.uiState.visitedPosts = [...state.uiState.visitedPosts, post.id];
-        renderPosts(state.posts, state);
-      }
-      renderModal(state.uiState.modal);
-      console.log('Updated uiState.modal:', state.uiState.modal);
-    });
-    
 
     postItem.append(postLink, postButton);
     postList.appendChild(postItem);
@@ -114,42 +100,34 @@ const renderPosts = (posts, state) => {
 };
 
 const renderModal = (modal) => {
-  console.log('Rendering modal with data:', modal);
   const modalElement = document.querySelector('#modal');
   const modalTitle = modalElement.querySelector('.modal-title');
   const modalBody = modalElement.querySelector('.modal-body');
-  const modalFullArticle = modalElement.querySelector('.full-article');
+  const modalLink = modalElement.querySelector('.full-article');
 
   modalTitle.textContent = modal.title;
   modalBody.textContent = modal.description;
-  modalFullArticle.href = modal.link;
-
-  const bootstrapModal = new bootstrap.Modal(modalElement);
-  bootstrapModal.show();
+  modalLink.href = modal.link;
 };
 
-
 export const initView = (state, i18nInstance) => {
-  const watchedState = onChange(state, (path, value) => {
-    console.log(`Path changed: ${path}`, value);
+  const watchedState = onChange(state, (path) => {
+    console.log('State change detected at path:', path); // Лог изменений состояния
   
-    if (path === 'uiState.modal') {
-      console.log('Modal state changed, rendering modal...');
-      renderModal(value);
-    }
-    if (path.startsWith('form')) {
-      renderFormState(state, i18nInstance);
-    }
-    if (path === 'feeds') {
-      renderFeeds(state.feeds);
-    }
-    if (path === 'posts') {
-      renderPosts(state.posts, state);
-    }
-    if (path === 'uiState.visitedPosts') {
-      renderPosts(state.posts, state);
-    }
+    if (path === 'form') renderFormState(watchedState, i18nInstance);
+    if (path === 'feeds') renderFeeds(watchedState.feeds);
+    if (path === 'posts') renderPosts(watchedState.posts, watchedState);
+    if (path === 'uiState.modal') renderModal(watchedState.uiState.modal);
   });
+  
+  renderFormState(watchedState, i18nInstance);
 
   return watchedState;
+};
+
+export const resetForm = () => {
+  const form = document.querySelector('.rss-form');
+  form.reset();
+  form.querySelector('input').focus(); // Сфокусироваться на input после отправки
+  console.log('Form reset and input focused'); // Лог сброса формы
 };

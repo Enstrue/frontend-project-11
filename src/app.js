@@ -3,16 +3,18 @@ import _ from 'lodash';
 import fetchRSS from './fetchRSS.js';
 import parseRSS from './parseRSS.js';
 import initI18n from './i18n.js';
-import { initView } from './view.js';
+import { initView, resetForm, renderPosts } from './view.js';
 
 const app = () => {
   initI18n().then((i18nInstance) => {
+    console.log('i18n initialized:', i18nInstance.t('feedback.success')); // Лог инициализации
+
     yup.setLocale({
       string: {
         url: i18nInstance.t('feedback.invalidUrl'),
       },
       mixed: {
-        required: i18nInstance.t('feedback.invalidUrl'),
+        required: i18nInstance.t('feedback.notEmpty'),
         notOneOf: i18nInstance.t('feedback.alreadyExists'),
       },
     });
@@ -24,14 +26,11 @@ const app = () => {
         url: '',
         valid: true,
         error: null,
+        successMessage: null,
       },
       uiState: {
         visitedPosts: [],
-        modal: {
-          title: null,
-          description: null,
-          link: null,
-        },
+        modal: {},
       },
       lastChecked: {},
     };
@@ -48,13 +47,20 @@ const app = () => {
 
       const formData = new FormData(e.target);
       const url = formData.get('url').trim();
-
       watchedState.form.url = url;
 
-      schema.validate({ url })
-        .then(() => fetchRSS(url))
-        .then((rssData) => parseRSS(rssData))
-        .then(({ feed, posts }) => {
+      console.log('Submitting URL:', url); // Лог отправки формы
+
+      schema
+        .validate({ url })
+        .then(() => {
+          console.log('Validation successful'); // Лог успешной валидации
+          watchedState.form.successMessage = i18nInstance.t('feedback.success');
+          watchedState.form.error = null;
+          return fetchRSS(url);
+        })
+        .then((rssData) => {
+          const { feed, posts } = parseRSS(rssData);
           const feedId = _.uniqueId();
           watchedState.feeds.push({ ...feed, id: feedId, url });
 
@@ -65,52 +71,87 @@ const app = () => {
           const newPosts = posts.map((post) => ({ ...post, id: _.uniqueId(), feedId }));
           watchedState.posts.push(...newPosts);
 
-          watchedState.form.valid = true;
-          watchedState.form.error = null;
-
-          form.reset();
-          form.querySelector('input').focus();
+          resetForm(); // Сброс формы и фокус на input
+          console.log('RSS successfully fetched and parsed'); // Лог успешной загрузки и парсинга RSS
         })
         .catch((error) => {
-          watchedState.form.valid = false;
-          watchedState.form.error = i18nInstance.t(`feedback.${error}`);
-        });
+          const errorMessageKey = error.message.startsWith('feedback.') ? error.message : 'feedback.unknownError';
+          const errorMessage = i18nInstance.exists(errorMessageKey) ? i18nInstance.t(errorMessageKey) : i18nInstance.t('feedback.unknownError');
+          console.log(`Error key: ${errorMessageKey}`); // Добавим лог для ключа ошибки
+          console.log('Error:', errorMessage); // Лог ошибок
+          watchedState.form.error = errorMessage;
+          watchedState.form.successMessage = null;
+        });               
     });
 
-    const checkForUpdates = (url) => {
-      const lastChecked = state.lastChecked[url] || new Date(0);
+    const postsContainer = document.querySelector('.posts');
+    postsContainer.addEventListener('click', (e) => {
+      const postId = e.target.dataset.id;
+      if (!postId) return;
 
-      fetchRSS(url)
-        .then((rssData) => parseRSS(rssData))
-        .then(({ posts }) => {
-          const newPosts = posts.filter(post => {
-            const postDate = new Date(post.pubDate);
-            return postDate > lastChecked;
-          });
+      const post = watchedState.posts.find((p) => p.id === postId);
 
-          if (newPosts.length > 0) {
-            const feedId = state.feeds.find(feed => feed.url === url).id;
-            const enrichedPosts = newPosts.map(post => ({ ...post, id: _.uniqueId(), feedId }));
+      if (e.target.tagName === 'A') {
+        watchedState.uiState.modal = {
+          title: post.title,
+          description: post.description,
+          link: post.link,
+        };
 
-            state.posts = [...state.posts, ...enrichedPosts];
-            state.lastChecked[url] = new Date();
-          }
+        if (!watchedState.uiState.visitedPosts.includes(post.id)) {
+          watchedState.uiState.visitedPosts = [...watchedState.uiState.visitedPosts, post.id];
+          renderPosts(watchedState.posts, watchedState);
+        }
+      }
 
-          setTimeout(() => checkForUpdates(url), 5000);
-        })
-        .catch(() => setTimeout(() => checkForUpdates(url), 5000));
-    };
+      if (e.target.tagName === 'BUTTON') {
+        watchedState.uiState.modal = {
+          title: post.title,
+          description: post.description,
+          link: post.link,
+        };
 
-    const startUpdateChecking = () => {
-      console.log("Starting periodic update check...");
+        if (!watchedState.uiState.visitedPosts.includes(post.id)) {
+          watchedState.uiState.visitedPosts = [...watchedState.uiState.visitedPosts, post.id];
+          renderPosts(watchedState.posts, watchedState);
+        }
 
-      watchedState.feeds.forEach(feed => {
-        checkForUpdates(feed.url);
-      });
+        const modalElement = document.querySelector('#modal');
+        const modalInstance = new bootstrap.Modal(modalElement);
+        modalInstance.show();
+      }
+    });
+
+    const startUpdateChecking = async () => {
+      console.log('Starting periodic update check...');
+      const updatePromises = watchedState.feeds.map((feed) => checkForUpdates(feed.url, state, watchedState));
+      await Promise.all(updatePromises);
+      setTimeout(startUpdateChecking, 5000);
     };
 
     startUpdateChecking();
   });
+};
+
+const checkForUpdates = (url, state, watchedState) => {
+  const lastChecked = state.lastChecked[url] || new Date(0);
+
+  return fetchRSS(url)
+    .then((rssData) => parseRSS(rssData))
+    .then(({ posts }) => {
+      const newPosts = posts.filter(post => {
+        const postDate = new Date(post.pubDate);
+        return postDate > lastChecked;
+      });
+
+      if (newPosts.length > 0) {
+        newPosts.forEach(post => {
+          watchedState.posts.push({ ...post, id: _.uniqueId() });
+        });
+        state.lastChecked[url] = new Date();
+      }
+    })
+    .catch(() => {}); // Ошибка при получении данных
 };
 
 export default app;

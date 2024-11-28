@@ -113,15 +113,21 @@ const renderModal = (modal) => {
 export const initView = (state, i18nInstance) => {
   const watchedState = onChange(state, (path) => {
     console.log('State change detected at path:', path); // Лог изменений состояния
-  
-    if (path === 'form') renderFormState(watchedState, i18nInstance);
-    if (path === 'feeds') renderFeeds(watchedState.feeds);
-    if (path === 'posts') renderPosts(watchedState.posts, watchedState);
-    if (path === 'uiState.modal') renderModal(watchedState.uiState.modal);
+    
+    switch(path) {
+      case 'form':
+        renderFormState(watchedState, i18nInstance);
+      case 'feeds':
+        renderFeeds(watchedState.feeds);
+      case 'posts':
+        renderPosts(watchedState.posts, watchedState);
+      case 'uiState.modal':
+        renderModal(watchedState.uiState.modal);
+      default:
+        return;
+    }
   });
-  
-  renderFormState(watchedState, i18nInstance);
-
+ 
   return watchedState;
 };
 

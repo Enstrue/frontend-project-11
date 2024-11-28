@@ -55,8 +55,15 @@ const app = () => {
         .validate({ url })
         .then(() => {
           console.log('Validation successful'); // Лог успешной валидации
-          watchedState.form.successMessage = i18nInstance.t('feedback.success');
-          watchedState.form.error = null;
+          
+          // Переопределяем watchedState.form при успешной валидации
+          watchedState.form = {
+            error: null,
+            successMessage: i18nInstance.t('feedback.success'),
+            url: url,
+            valid: true,
+          };
+
           return fetchRSS(url);
         })
         .then((rssData) => {
@@ -73,15 +80,42 @@ const app = () => {
 
           resetForm(); // Сброс формы и фокус на input
           console.log('RSS successfully fetched and parsed'); // Лог успешной загрузки и парсинга RSS
-        })
+        })     
         .catch((error) => {
-          const errorMessageKey = error.message.startsWith('feedback.') ? error.message : 'feedback.unknownError';
-          const errorMessage = i18nInstance.exists(errorMessageKey) ? i18nInstance.t(errorMessageKey) : i18nInstance.t('feedback.unknownError');
-          console.log(`Error key: ${errorMessageKey}`); // Добавим лог для ключа ошибки
-          console.log('Error:', errorMessage); // Лог ошибок
-          watchedState.form.error = errorMessage;
-          watchedState.form.successMessage = null;
-        });               
+          let errorMessageKey;
+        
+          switch (true) {
+            case error.name === 'ValidationError':
+              errorMessageKey = 'feedback.invalidUrl';
+              break;
+            case error.message && error.message.includes('NetworkError'):
+              errorMessageKey = 'feedback.networkError';
+              break;
+            case error.message && error.message.includes('Invalid RSS format'):
+              errorMessageKey = 'feedback.rssParsingError';
+              break;
+            default:
+              errorMessageKey = 'feedback.unknownError';
+              break;
+          }
+        
+          const errorMessage = i18nInstance.exists(errorMessageKey) 
+            ? i18nInstance.t(errorMessageKey) 
+            : i18nInstance.t('feedback.unknownError');
+        
+          console.log('Error key:', errorMessageKey);
+          console.log('Error message:', errorMessage);
+        
+          updateFormState(errorMessage);
+        });
+        const updateFormState = (errorMessage) => {
+          watchedState.form = {
+            error: errorMessage,
+            successMessage: null,
+            url: watchedState.form.url,
+            valid: false, // форма недействительна
+          };
+        };                 
     });
 
     const postsContainer = document.querySelector('.posts');

@@ -4,21 +4,21 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const isProduction = process.env.NODE_ENV === 'production';
 
 const config = {
-  entry: './src/index.js',  // Указываем JS как точку входа
+  entry: './src/index.js',
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: '[name].[contenthash].js',  // Добавляем хэш для устранения кэширования
-    clean: true,  // Очищает директорию dist перед новой сборкой
+    filename: '[name].[contenthash].js',
+    clean: true,
   },
   devServer: {
     open: true,
     host: 'localhost',
-    hot: true,  // Включаем HMR для автоматического обновления страницы
-    watchFiles: ['src/**/*'],  // Следим за изменениями в каталоге src
+    hot: true,
+    watchFiles: ['src/**/*'],
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: './index.html',  // Указываем путь к HTML-шаблону в корне проекта
+      template: './index.html',
     }),
   ],
   module: {
@@ -52,8 +52,8 @@ const config = {
     ],
   },
   watchOptions: {
-    aggregateTimeout: 300,  // Задержка перед пересборкой после изменений
-    poll: 1000,             // Проверка изменений файлов каждые 1000 мс (поллинг)
+    aggregateTimeout: 300,
+    poll: 1000,
   },
 };
 

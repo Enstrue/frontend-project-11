@@ -1,5 +1,5 @@
 import i18next from 'i18next';
-import ru from './locales/ru.json';
+import ru from './locales/ru.js';
 
 const initI18n = () => {
   const i18nInstance = i18next.createInstance(); // Создаем новый экземпляр i18next

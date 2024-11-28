@@ -63,46 +63,50 @@ const app = () => {
       }
 
       schema
-        .validate({ url })
-        .then(() => fetchRSS(url))
-        .then((rssData) => {
-          const { feed, posts } = parseRSS(rssData);
-          const feedId = _.uniqueId();
-          
-          watchedState.form = {
-            error: null,
-            successMessage: i18nInstance.t('feedback.success'),
-            url: url,
-            valid: true,
-          };
-
-          watchedState.feeds.push({ ...feed, id: feedId, url });
-
-          if (!state.lastChecked[url]) {
-            state.lastChecked[url] = new Date();
-          }
-
-          const newPosts = posts.map((post) => ({ ...post, id: _.uniqueId(), feedId }));
-          watchedState.posts.push(...newPosts);
-
-          resetForm(); // Сброс формы и фокус на input
-          console.log('RSS successfully fetched and parsed'); // Лог успешной загрузки и парсинга RSS
-        })
-        .catch((error) => {
-          let errorMessageKey;
-
-          // Проверяем, что ошибка связана с неправильным форматом RSS
-          if (error.message === 'rssParsingError') {
-            errorMessageKey = 'feedback.rssParsingError'; // Ошибка парсинга RSS
-          } else if (error.name === 'ValidationError') {
-            errorMessageKey = 'feedback.invalidUrl'; // Ошибка валидации URL
-          } else if (error.message.includes('NetworkError')) {
-            errorMessageKey = 'feedback.networkError'; // Ошибка сети
-          } else { 
-            errorMessageKey = 'feedback.unknownError'; // Неизвестная ошибка
-          }      
-          updateFormState(errorMessageKey);
-        });
+      .validate({ url })
+      .then(() => fetchRSS(url))
+      .then((rssData) => {
+        const { feed, posts } = parseRSS(rssData);
+        const feedId = _.uniqueId();
+        
+        watchedState.form = {
+          error: null,
+          successMessage: i18nInstance.t('feedback.success'),
+          url: url,
+          valid: true,
+        };
+    
+        watchedState.feeds.push({ ...feed, id: feedId, url });
+    
+        if (!state.lastChecked[url]) {
+          state.lastChecked[url] = new Date();
+        }
+    
+        const newPosts = posts.map((post) => ({ ...post, id: _.uniqueId(), feedId }));
+        watchedState.posts.push(...newPosts);
+    
+        resetForm(); // Сброс формы и фокус на input
+        console.log('RSS successfully fetched and parsed'); // Лог успешной загрузки и парсинга RSS
+      })
+      .catch((error) => {
+        let errorMessageKey;
+    
+        // Если ошибка это валидация пустого URL
+        if (error.name === 'ValidationError' && error.errors.includes('url is a required field')) {
+          errorMessageKey = 'feedback.notEmpty'; // Сообщение, если URL пустой
+        } else if (error.message === 'rssParsingError') {
+          errorMessageKey = 'feedback.rssParsingError'; // Ошибка парсинга RSS
+        } else if (error.name === 'ValidationError') {
+          errorMessageKey = 'feedback.invalidUrl'; // Ошибка валидации URL
+        } else if (error.message === 'networkError') {
+          errorMessageKey = 'feedback.networkError'; // Ошибка сети
+        } else {
+          errorMessageKey = 'feedback.unknownError'; // Неизвестная ошибка
+        }
+    
+        updateFormState(i18nInstance.t(errorMessageKey)); // Передаем правильное сообщение
+      });
+    
     });
 
     // Функция для обновления состояния формы

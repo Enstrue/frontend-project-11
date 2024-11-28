@@ -51,11 +51,22 @@ const app = () => {
 
       console.log('Submitting URL:', url); // Лог отправки формы
 
+      // Проверка, существует ли уже такой канал
+      const existingFeed = state.feeds.find(feed => feed.url === url);
+      if (existingFeed) {
+        const errorMessage = i18nInstance.t('feedback.alreadyExists');
+        console.log('Feed already exists:', errorMessage); // Лог ошибки, если канал уже добавлен
+
+        // Переопределяем watchedState.form для этой ошибки
+        updateFormState(errorMessage);
+        return; // Прерываем выполнение, так как канал уже существует
+      }
+
       schema
         .validate({ url })
         .then(() => {
           console.log('Validation successful'); // Лог успешной валидации
-          
+
           // Переопределяем watchedState.form при успешной валидации
           watchedState.form = {
             error: null,
@@ -80,7 +91,7 @@ const app = () => {
 
           resetForm(); // Сброс формы и фокус на input
           console.log('RSS successfully fetched and parsed'); // Лог успешной загрузки и парсинга RSS
-        })     
+        })
         .catch((error) => {
           let errorMessageKey;
         
@@ -108,15 +119,17 @@ const app = () => {
         
           updateFormState(errorMessage);
         });
-        const updateFormState = (errorMessage) => {
-          watchedState.form = {
-            error: errorMessage,
-            successMessage: null,
-            url: watchedState.form.url,
-            valid: false, // форма недействительна
-          };
-        };                 
     });
+
+    // Функция для обновления состояния формы
+    const updateFormState = (errorMessage) => {
+      watchedState.form = {
+        error: errorMessage,
+        successMessage: null,
+        url: watchedState.form.url,
+        valid: false, // форма недействительна
+      };
+    };
 
     const postsContainer = document.querySelector('.posts');
     postsContainer.addEventListener('click', (e) => {

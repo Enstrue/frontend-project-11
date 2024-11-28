@@ -5,7 +5,7 @@ const parseRSS = (data) => {
   const parseError = doc.querySelector('parsererror');
   if (parseError) {
     console.error('RSS parsing error:', parseError.textContent); // Лог ошибки парсинга RSS
-    throw new Error('rssParsingError');
+    throw new Error('rssParsingError'); // Бросаем ошибку с текстом 'rssParsingError'
   }
 
   const feedTitle = doc.querySelector('channel > title').textContent;

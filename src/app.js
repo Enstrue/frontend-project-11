@@ -64,10 +64,11 @@ const app = () => {
 
       schema
         .validate({ url })
-        .then(() => {
-          console.log('Validation successful'); // Лог успешной валидации
-
-          // Переопределяем watchedState.form при успешной валидации
+        .then(() => fetchRSS(url))
+        .then((rssData) => {
+          const { feed, posts } = parseRSS(rssData);
+          const feedId = _.uniqueId();
+          
           watchedState.form = {
             error: null,
             successMessage: i18nInstance.t('feedback.success'),
@@ -75,11 +76,6 @@ const app = () => {
             valid: true,
           };
 
-          return fetchRSS(url);
-        })
-        .then((rssData) => {
-          const { feed, posts } = parseRSS(rssData);
-          const feedId = _.uniqueId();
           watchedState.feeds.push({ ...feed, id: feedId, url });
 
           if (!state.lastChecked[url]) {
@@ -94,22 +90,18 @@ const app = () => {
         })
         .catch((error) => {
           let errorMessageKey;
-        
-          switch (true) {
-            case error.name === 'ValidationError':
-              errorMessageKey = 'feedback.invalidUrl';
-              break;
-            case error.message && error.message.includes('NetworkError'):
-              errorMessageKey = 'feedback.networkError';
-              break;
-            case error.message && error.message.includes('Invalid RSS format'):
-              errorMessageKey = 'feedback.rssParsingError';
-              break;
-            default:
-              errorMessageKey = 'feedback.unknownError';
-              break;
+
+          // Проверяем, что ошибка связана с неправильным форматом RSS
+          if (error.message === 'rssParsingError') {
+            errorMessageKey = 'feedback.rssParsingError'; // Ошибка парсинга RSS
+          } else if (error.name === 'ValidationError') {
+            errorMessageKey = 'feedback.invalidUrl'; // Ошибка валидации URL
+          } else if (error.message && error.message.includes('NetworkError')) {
+            errorMessageKey = 'feedback.networkError'; // Ошибка сети
+          } else { 
+            errorMessageKey = 'feedback.unknownError'; // Неизвестная ошибка
           }
-        
+
           const errorMessage = i18nInstance.exists(errorMessageKey) 
             ? i18nInstance.t(errorMessageKey) 
             : i18nInstance.t('feedback.unknownError');
@@ -202,3 +194,4 @@ const checkForUpdates = (url, state, watchedState) => {
 };
 
 export default app;
+

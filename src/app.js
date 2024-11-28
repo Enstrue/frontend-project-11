@@ -96,20 +96,12 @@ const app = () => {
             errorMessageKey = 'feedback.rssParsingError'; // Ошибка парсинга RSS
           } else if (error.name === 'ValidationError') {
             errorMessageKey = 'feedback.invalidUrl'; // Ошибка валидации URL
-          } else if (error.message && error.message.includes('NetworkError')) {
+          } else if (error.message.includes('NetworkError')) {
             errorMessageKey = 'feedback.networkError'; // Ошибка сети
           } else { 
             errorMessageKey = 'feedback.unknownError'; // Неизвестная ошибка
-          }
-
-          const errorMessage = i18nInstance.exists(errorMessageKey) 
-            ? i18nInstance.t(errorMessageKey) 
-            : i18nInstance.t('feedback.unknownError');
-        
-          console.log('Error key:', errorMessageKey);
-          console.log('Error message:', errorMessage);
-        
-          updateFormState(errorMessage);
+          }      
+          updateFormState(errorMessageKey);
         });
     });
 

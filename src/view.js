@@ -1,4 +1,4 @@
-import onChange from "on-change";
+import onChange from 'on-change';
 
 const renderFormState = (state, i18nInstance) => {
   const input = document.querySelector('#url-input');
@@ -28,7 +28,6 @@ const renderFormState = (state, i18nInstance) => {
   }
   console.log('Form state:', state.form); // Лог состояния формы
 };
-
 
 const renderFeeds = (feeds) => {
   const feedsContainer = document.querySelector('.feeds');
@@ -113,21 +112,25 @@ const renderModal = (modal) => {
 export const initView = (state, i18nInstance) => {
   const watchedState = onChange(state, (path) => {
     console.log('State change detected at path:', path); // Лог изменений состояния
-    
-    switch(path) {
+
+    switch (path) {
       case 'form':
         renderFormState(watchedState, i18nInstance);
+        break;
       case 'feeds':
         renderFeeds(watchedState.feeds);
+        break;
       case 'posts':
         renderPosts(watchedState.posts, watchedState);
+        break;
       case 'uiState.modal':
         renderModal(watchedState.uiState.modal);
+        break;
       default:
-        return;
+        break;
     }
   });
- 
+
   return watchedState;
 };
 

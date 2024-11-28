@@ -1,7 +1,7 @@
 const parseRSS = (data) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(data, 'application/xml');
-  
+
   const parseError = doc.querySelector('parsererror');
   if (parseError) {
     console.error('RSS parsing error:', parseError.textContent); // Лог ошибки парсинга RSS

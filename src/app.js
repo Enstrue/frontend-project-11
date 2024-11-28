@@ -81,12 +81,12 @@ const app = () => {
       const url = formData.get('url').trim();
       watchedState.form.url = url;
 
-    // Проверка на наличие дублирующего URL
-    const isUrlExist = state.feeds.some((feed) => feed.url === url);
-    if (isUrlExist) {
-      updateFormState(i18nInstance.t('feedback.alreadyExists')); // Сообщение об ошибке
-      return; // Выход из функции, если URL уже существует
-    }
+      // Проверка на наличие дублирующего URL
+      const isUrlExist = state.feeds.some((feed) => feed.url === url);
+      if (isUrlExist) {
+        updateFormState(i18nInstance.t('feedback.alreadyExists')); // Сообщение об ошибке
+        return; // Выход из функции, если URL уже существует
+      }
 
       schema
         .validate({ url })

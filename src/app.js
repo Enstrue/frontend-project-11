@@ -4,7 +4,7 @@ import _ from 'lodash';
 import fetchRSS from './fetchRSS.js';
 import parseRSS from './parseRSS.js';
 import initI18n from './i18n.js';
-import { initView, resetForm, renderPosts } from './view.js';
+import { initView, renderPosts } from './view.js';
 
 const app = () => {
   initI18n().then((i18nInstance) => {
@@ -26,6 +26,7 @@ const app = () => {
         valid: true,
         error: null,
         successMessage: null,
+        loading: false, // Новое состояние формы
       },
       uiState: {
         visitedPosts: [],
@@ -33,46 +34,28 @@ const app = () => {
       },
       lastChecked: {},
     };
+
     const watchedState = initView(state, i18nInstance);
 
-    const updateFormState = (errorMessage) => {
-      watchedState.form = {
-        error: errorMessage,
-        successMessage: null,
-        url: watchedState.form.url,
-        valid: false,
-      };
+    const typeError = (error) => {
+      if (error.name === 'ValidationError' && error.errors.includes('url is a required field')) {
+        return 'feedback.notEmpty';
+      }
+      if (error.message === 'rssParsingError') {
+        return 'feedback.rssParsingError';
+      }
+      if (error.name === 'ValidationError') {
+        return 'feedback.invalidUrl';
+      }
+      if (error.message === 'networkError') {
+        return 'feedback.networkError';
+      }
+      return 'feedback.unknownError';
     };
 
-    const schema = yup.object().shape({
+    const getSchema = () => yup.object().shape({
       url: yup.string().url().required().notOneOf(state.feeds.map((feed) => feed.url)),
     });
-
-    const checkForUpdates = (url, stateParam, localWatchedState) => {
-      const lastChecked = stateParam.lastChecked[url] || new Date(0);
-
-      return fetchRSS(url)
-        .then((rssData) => parseRSS(rssData))
-        .then(({ posts }) => {
-          const newPosts = posts.filter((post) => {
-            const postDate = new Date(post.pubDate);
-            return postDate > lastChecked;
-          });
-
-          if (newPosts.length > 0) {
-            newPosts.forEach((post) => {
-              localWatchedState.posts.push({ ...post, id: _.uniqueId() });
-            });
-
-            const updatedState = { ...state };
-            updatedState.lastChecked[url] = new Date();
-            return updatedState; // Возвращаем обновленное состояние
-          }
-
-          return null; // Если новых постов нет, можно вернуть null или пустой объект
-        })
-        .catch(() => {}); // Ошибка при получении данных
-    };
 
     const form = document.querySelector('.rss-form');
     form.addEventListener('submit', (e) => {
@@ -81,13 +64,9 @@ const app = () => {
       const url = formData.get('url').trim();
       watchedState.form.url = url;
 
-      // Проверка на наличие дублирующего URL
-      const isUrlExist = state.feeds.some((feed) => feed.url === url);
-      if (isUrlExist) {
-        updateFormState(i18nInstance.t('feedback.alreadyExists')); // Сообщение об ошибке
-        return; // Выход из функции, если URL уже существует
-      }
+      const schema = getSchema();
 
+      watchedState.form.loading = true; // Начало загрузки
       schema
         .validate({ url })
         .then(() => fetchRSS(url))
@@ -98,8 +77,9 @@ const app = () => {
           watchedState.form = {
             error: null,
             successMessage: i18nInstance.t('feedback.success'),
-            url,
+            url: '',
             valid: true,
+            loading: false, // Завершение загрузки
           };
 
           watchedState.feeds.push({ ...feed, id: feedId, url });
@@ -110,25 +90,15 @@ const app = () => {
 
           const newPosts = posts.map((post) => ({ ...post, id: _.uniqueId(), feedId }));
           watchedState.posts.push(...newPosts);
-
-          resetForm();
         })
         .catch((error) => {
-          let errorMessageKey;
-
-          if (error.name === 'ValidationError' && error.errors.includes('url is a required field')) {
-            errorMessageKey = 'feedback.notEmpty';
-          } else if (error.message === 'rssParsingError') {
-            errorMessageKey = 'feedback.rssParsingError';
-          } else if (error.name === 'ValidationError') {
-            errorMessageKey = 'feedback.invalidUrl';
-          } else if (error.message === 'networkError') {
-            errorMessageKey = 'feedback.networkError';
-          } else {
-            errorMessageKey = 'feedback.unknownError';
-          }
-
-          updateFormState(i18nInstance.t(errorMessageKey));
+          watchedState.form = {
+            error: i18nInstance.t(typeError(error)),
+            successMessage: null,
+            url: watchedState.form.url,
+            valid: false,
+            loading: false, // Завершение загрузки с ошибкой
+          };
         });
     });
 
@@ -138,32 +108,20 @@ const app = () => {
       if (!postId) return;
 
       const post = watchedState.posts.find((p) => p.id === postId);
+      if (!post) return;
 
-      if (e.target.tagName === 'A') {
-        watchedState.uiState.modal = {
-          title: post.title,
-          description: post.description,
-          link: post.link,
-        };
+      watchedState.uiState.modal = {
+        title: post.title,
+        description: post.description,
+        link: post.link,
+      };
 
-        if (!watchedState.uiState.visitedPosts.includes(post.id)) {
-          watchedState.uiState.visitedPosts = [...watchedState.uiState.visitedPosts, post.id];
-          renderPosts(watchedState.posts, watchedState);
-        }
+      if (!watchedState.uiState.visitedPosts.includes(post.id)) {
+        watchedState.uiState.visitedPosts = [...watchedState.uiState.visitedPosts, post.id];
+        renderPosts(watchedState.posts, watchedState);
       }
 
       if (e.target.tagName === 'BUTTON') {
-        watchedState.uiState.modal = {
-          title: post.title,
-          description: post.description,
-          link: post.link,
-        };
-
-        if (!watchedState.uiState.visitedPosts.includes(post.id)) {
-          watchedState.uiState.visitedPosts = [...watchedState.uiState.visitedPosts, post.id];
-          renderPosts(watchedState.posts, watchedState);
-        }
-
         const modalElement = document.querySelector('#modal');
         const modalInstance = new bootstrap.Modal(modalElement);
         modalInstance.show();
@@ -171,12 +129,39 @@ const app = () => {
     });
 
     const startUpdateChecking = async () => {
-      const checkUpdatesForFeed = (feed) => checkForUpdates(feed.url, state, watchedState);
+      const checkUpdatesForFeed = async (feed) => {
+        try {
+          const rssData = await fetchRSS(feed.url);
+          const { posts } = parseRSS(rssData);
+
+          const lastChecked = state.lastChecked[feed.url]
+            ? new Date(state.lastChecked[feed.url])
+            : new Date(0);
+
+          const newPosts = posts.filter((post) => {
+            const postDate = new Date(post.pubDate).getTime();
+            const isNew = postDate > lastChecked.getTime();
+            return isNew;
+          });
+
+          if (newPosts.length > 0) {
+            // Добавляем новые посты в состояние
+            newPosts.forEach((post) => {
+              watchedState.posts.push({ ...post, id: _.uniqueId(), feedId: feed.id });
+            });
+
+            state.lastChecked[feed.url] = new Date();
+            renderPosts(watchedState.posts, watchedState);
+          }
+        } catch (error) {
+          console.error(`Error fetching updates for feed ${feed.url}:`, error);
+        }
+      };
+
       const updatePromises = watchedState.feeds.map(checkUpdatesForFeed);
-      await Promise.all(updatePromises);
-      setTimeout(() => {
-        startUpdateChecking();
-      }, 5000);
+      await Promise.all(updatePromises); // Ждем завершения всех обновлений
+
+      setTimeout(startUpdateChecking, 5000);
     };
 
     startUpdateChecking();

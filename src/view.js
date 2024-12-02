@@ -3,42 +3,53 @@ import onChange from 'on-change';
 const renderFormState = (state, i18nInstance) => {
   const input = document.querySelector('#url-input');
   const feedback = document.querySelector('.feedback');
+  const submitButton = document.querySelector('button[type="submit"]');
 
+  // Сброс классов и сообщений
   feedback.textContent = '';
   feedback.classList.remove('text-success', 'text-danger');
+  submitButton.disabled = state.form.loading; // Блокировка кнопки при загрузке
 
+  // Отображение состояния валидности
   if (state.form.valid) {
     input.classList.remove('is-invalid');
   } else {
     input.classList.add('is-invalid');
   }
 
+  // Отображение ошибок
   if (state.form.error) {
     feedback.classList.add('text-danger');
     feedback.textContent = i18nInstance.exists(state.form.error)
       ? i18nInstance.t(state.form.error)
       : state.form.error;
-    console.log('Error message:', feedback.textContent); // Лог для проверки ошибки
   }
 
+  // Отображение успешного сообщения
   if (state.form.successMessage) {
     feedback.classList.add('text-success');
     feedback.textContent = state.form.successMessage;
-    console.log('Success message:', feedback.textContent); // Лог для проверки успеха
   }
-  console.log('Form state:', state.form); // Лог состояния формы
+
+  // Очистка формы и фокусировка на input при успешной отправке
+  if (!state.form.loading && state.form.valid && state.form.successMessage) {
+    input.value = '';
+    input.focus();
+  }
 };
 
 const renderFeeds = (feeds) => {
   const feedsContainer = document.querySelector('.feeds');
-  feedsContainer.innerHTML = '';
+  feedsContainer.innerHTML = ''; // Очистка контейнера
 
   if (feeds.length === 0) return;
 
+  // Заголовок секции
   const feedsTitle = document.createElement('h2');
   feedsTitle.textContent = 'Фиды';
   feedsContainer.appendChild(feedsTitle);
 
+  // Список фидов
   const feedList = document.createElement('ul');
   feedList.classList.add('list-group', 'mb-5');
 
@@ -61,18 +72,21 @@ const renderFeeds = (feeds) => {
 
 export const renderPosts = (posts, state) => {
   const postsContainer = document.querySelector('.posts');
-  postsContainer.innerHTML = '';
+  postsContainer.innerHTML = ''; // Очистка контейнера
 
   if (posts.length === 0) return;
 
+  // Заголовок секции
   const postsTitle = document.createElement('h2');
   postsTitle.textContent = 'Посты';
   postsContainer.appendChild(postsTitle);
 
+  // Список постов
   const postList = document.createElement('ul');
   postList.classList.add('list-group');
 
-  posts.forEach((post) => {
+  // Добавляем посты в обратном порядке
+  posts.slice().reverse().forEach((post) => {
     const postItem = document.createElement('li');
     postItem.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-start');
 
@@ -85,6 +99,7 @@ export const renderPosts = (posts, state) => {
     postLink.classList.toggle('fw-normal', state.uiState.visitedPosts.includes(post.id));
     postLink.dataset.id = post.id;
 
+    // Кнопка "Просмотр"
     const postButton = document.createElement('button');
     postButton.textContent = 'Просмотр';
     postButton.type = 'button';
@@ -111,8 +126,6 @@ const renderModal = (modal) => {
 
 export const initView = (state, i18nInstance) => {
   const watchedState = onChange(state, (path) => {
-    console.log('State change detected at path:', path); // Лог изменений состояния
-
     switch (path) {
       case 'form':
         renderFormState(watchedState, i18nInstance);
@@ -132,11 +145,4 @@ export const initView = (state, i18nInstance) => {
   });
 
   return watchedState;
-};
-
-export const resetForm = () => {
-  const form = document.querySelector('.rss-form');
-  form.reset();
-  form.querySelector('input').focus(); // Сфокусироваться на input после отправки
-  console.log('Form reset and input focused'); // Лог сброса формы
 };

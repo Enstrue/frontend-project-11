@@ -4,7 +4,6 @@ const parseRSS = (data) => {
 
   const parseError = doc.querySelector('parsererror');
   if (parseError) {
-    console.error('RSS parsing error:', parseError.textContent); // Лог ошибки парсинга RSS
     throw new Error('rssParsingError'); // Бросаем ошибку с текстом 'rssParsingError'
   }
 
@@ -14,9 +13,8 @@ const parseRSS = (data) => {
     title: item.querySelector('title').textContent,
     link: item.querySelector('link').textContent,
     description: item.querySelector('description')?.textContent || '',
+    pubDate: item.querySelector('pubDate')?.textContent || '', // Добавляем парсинг pubDate
   }));
-
-  console.log('RSS parsed successfully:', feedTitle); // Лог успешного парсинга RSS
 
   return {
     feed: {

@@ -59,6 +59,12 @@ const config = {
     aggregateTimeout: 300,
     poll: 1000,
   },
+  resolve: {
+    extensions: ['.js', '.json', '.jsx'],
+  },
+  experiments: {
+    topLevelAwait: true,
+  },
 };
 
 module.exports = () => {

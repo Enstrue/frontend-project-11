@@ -38,14 +38,19 @@ const app = () => {
     const watchedState = initView(state, i18nInstance);
 
     const typeError = (error) => {
-      if (error.name === 'ValidationError' && error.errors.includes('url is a required field')) {
-        return 'feedback.notEmpty';
+      if (error.name === 'ValidationError') {
+        if (error.errors.includes(i18nInstance.t('feedback.notEmpty'))) {
+          return 'feedback.notEmpty';
+        }
+        if (error.errors.includes(i18nInstance.t('feedback.alreadyExists'))) {
+          return 'feedback.alreadyExists';
+        }
+        if (error.errors.includes(i18nInstance.t('feedback.invalidUrl'))) {
+          return 'feedback.invalidUrl';
+        }
       }
       if (error.message === 'rssParsingError') {
         return 'feedback.rssParsingError';
-      }
-      if (error.name === 'ValidationError') {
-        return 'feedback.invalidUrl';
       }
       if (error.message === 'networkError') {
         return 'feedback.networkError';
